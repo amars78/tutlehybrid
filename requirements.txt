@@ -3,5 +3,5 @@ yfinance
 pandas
 numpy
 plotly
-pykrx
+pykrx>=1.0.45
 setuptools
