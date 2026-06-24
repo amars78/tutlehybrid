@@ -14,7 +14,7 @@ except ImportError:
 
 # --- 페이지 설정 ---
 st.set_page_config(page_title="CAN SLIM x 터틀 실전 매니저", layout="wide")
-st.title("🦅 CAN SLIM x 🐢 터틀 트레이딩 실전 자산 매니저")
+st.title("🦅 CAN SLIM x 🐢 터틀 트레이딩 매니저")
 st.markdown("""
 * **국내 주식**: `.KS`를 붙일 필요 없이 **6자리 숫자**만 입력하고 빈 곳을 누르세요. (예: `005930`, `064260`)
 * **해외 주식**: 기존처럼 영문 티커를 입력하세요. (예: `AAPL`, `TSLA`)
