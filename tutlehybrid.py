@@ -30,7 +30,6 @@ def resolve_ticker_and_name(raw_ticker: str) -> tuple:
         
     # 1. 국내 주식 처리 (6자리 숫자만 입력된 경우)
     if raw_ticker.isdigit() and len(raw_ticker) == 6:
-        # pykrx 사용 가능 시 시장 감지 및 한글명 추출
         if PYKRX_AVAILABLE:
             try:
                 name = krx.get_market_ticker_name(raw_ticker)
@@ -41,7 +40,6 @@ def resolve_ticker_and_name(raw_ticker: str) -> tuple:
             except Exception:
                 pass
         
-        # pykrx 실패 혹은 미설치 시 yfinance 교차 검증 (.KS -> .KQ 순서로 탐색)
         for suffix in [".KS", ".KQ"]:
             test_ticker = f"{raw_ticker}{suffix}"
             try:
@@ -50,11 +48,11 @@ def resolve_ticker_and_name(raw_ticker: str) -> tuple:
                 name = info.get("shortName") or info.get("longName")
                 if name:
                     if "," in name and test_ticker in name.upper() and raw_ticker == "064260":
-                        return test_ticker, "다날" # 야후 DB 오염 종목 방어
+                        return test_ticker, "다날"
                     return test_ticker, name
             except Exception:
                 pass
-        return f"{raw_ticker}.KS", raw_ticker # 최후의 보루
+        return f"{raw_ticker}.KS", raw_ticker
 
     # 2. 해외 주식 또는 이미 접미사가 붙은 채 들어온 경우
     else:
@@ -165,13 +163,12 @@ if "active_positions" not in st.session_state:
 tab0, tab1, tab2 = st.tabs(["🔥 1. 실전 보유 포지션 관리", "📊 2. CAN SLIM 관심종목 스캐너", "📈 3. 개별 종목 융합 차트"])
 
 # =========================================================
-# 탭 0: 실전 보유 포지션 관리 (완전 자동완성 브릿지 탑재)
+# 탭 0: 실전 보유 포지션 관리 
 # =========================================================
 with tab0:
     st.subheader("🛠| 보유 포지션 입력 및 편집")
     st.caption("💡 국내 주식은 `005930` 형태로 입력 후 마우스를 빈 곳에 클릭하면 자동으로 이름과 접미사가 완성됩니다.")
     
-    # 1. 에디터 배치
     edited_df = st.data_editor(
         st.session_state.active_positions, 
         num_rows="dynamic", 
@@ -184,7 +181,6 @@ with tab0:
         }
     )
     
-    # 2. 강력한 셀 변경 가로채기 및 자동 맵핑 백엔드
     names_updated = False
     updated_df = edited_df.copy()
     
@@ -194,7 +190,6 @@ with tab0:
             current_name = row.get("종목명", "")
             is_pure_digits = t.isdigit() and len(t) == 6
             
-            # 숫자 6자리만 쳐졌거나, 혹은 종목명이 유실된 빈 칸일 경우 강제 정제 구동
             if is_pure_digits or pd.isna(current_name) or current_name == "" or current_name == t:
                 with st.spinner("종목 정보를 파싱하고 있습니다..."):
                     sanitized_ticker, fetched_name = resolve_ticker_and_name(t)
@@ -206,7 +201,7 @@ with tab0:
                     
     st.session_state.active_positions = updated_df
     if names_updated:
-        st.rerun() # 변경 즉시 화면을 갱신하여 표에 입력되도록 만듬
+        st.rerun() 
 
     st.divider()
     st.subheader("🚨 실시간 보유 포지션 대응 알림판")
@@ -261,12 +256,23 @@ with tab0:
             })
             
     if real_management_data:
-        st.dataframe(pd.DataFrame(real_management_data), use_container_width=True, hide_index=True)
+        res_df = pd.DataFrame(real_management_data)
+        st.dataframe(res_df, use_container_width=True, hide_index=True)
+        
+        # --- 엑셀(CSV) 다운로드 버튼 추가 ---
+        csv_data = res_df.to_csv(index=False).encode('utf-8-sig')
+        st.download_button(
+            label="📥 포지션 대응 알림판 엑셀(CSV) 다운로드",
+            data=csv_data,
+            file_name=f"Position_Alerts_{datetime.now().strftime('%Y%m%d')}.csv",
+            mime="text/csv",
+            key='download_positions'
+        )
     else:
         st.info("포지션을 입력하시면 실시간 대응 분석표가 이곳에 출력됩니다.")
 
 # =========================================================
-# 탭 1: CAN SLIM 관심종목 스캐너 (간편 숫자 필터 적용)
+# 탭 1: CAN SLIM 관심종목 스캐너 
 # =========================================================
 with tab1:
     st.subheader("🔍 관심종목 발굴 스캐너")
@@ -276,7 +282,6 @@ with tab1:
     scan_tickers = []
     ticker_to_name = {}
     
-    # 스캐너에서도 숫자만 입력하면 자동 정제 가동
     for t in scan_tickers_raw:
         sanitized_t, name = resolve_ticker_and_name(t)
         if sanitized_t:
@@ -335,8 +340,20 @@ with tab1:
                 "터틀 진입선": round(latest['Entry_High'], 2),
                 "터틀 청산선": round(latest['Exit_Low'], 2)
             })
+            
     if scan_data:
-        st.dataframe(pd.DataFrame(scan_data), use_container_width=True, hide_index=True)
+        scan_df = pd.DataFrame(scan_data)
+        st.dataframe(scan_df, use_container_width=True, hide_index=True)
+        
+        # --- 엑셀(CSV) 다운로드 버튼 추가 ---
+        csv_data_scan = scan_df.to_csv(index=False).encode('utf-8-sig')
+        st.download_button(
+            label="📥 관심종목 스캐너 엑셀(CSV) 다운로드",
+            data=csv_data_scan,
+            file_name=f"Scanner_Results_{datetime.now().strftime('%Y%m%d')}.csv",
+            mime="text/csv",
+            key='download_scanner'
+        )
 
 # =========================================================
 # 탭 2: 개별 종목 융합 차트 및 세부 계획
